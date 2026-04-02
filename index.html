@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calgary Crime Dashboard (2018–2024)</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a2b;
+      --panel-2: #0f1524;
+      --text: #eef2ff;
+      --muted: #a7b0c6;
+      --accent: #6ea8fe;
+      --grid: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.1);
+      --good: #7bd389;
+      --warn: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #0d1323 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-block h1 {
+      font-size: 2rem;
+      margin-bottom: 6px;
+    }
+
+    .title-block p {
+      color: var(--muted);
+      max-width: 980px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .control {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .control label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    select,
+    input,
+    button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: var(--muted);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(110,168,254,0.15);
+    }
+
+    button {
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .metric-toggle {
+      display: flex;
+      gap: 8px;
+    }
+
+    .metric-toggle button.active {
+      background: var(--accent);
+      color: #07111f;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    #resetBtn {
+      font-weight: 600;
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    #resetBtn:hover {
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+    }
+
+    .stat .k {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+
+    .stat .v {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      grid-template-areas:
+        "bar trend"
+        "sector sector";
+      gap: 16px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 16px;
+      min-height: 420px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .panel h2 {
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+
+    .panel p.sub {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    #bar-panel { grid-area: bar; }
+    #trend-panel { grid-area: trend; }
+    #sector-panel { grid-area: sector; min-height: 480px; }
+
+    .chart { width: 100%; height: 350px; }
+    #sector-chart { height: 400px; }
+
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(9, 13, 25, 0.96);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+      z-index: 20;
+    }
+
+    .axis text {
+      fill: var(--muted);
+      font-size: 12px;
+    }
+
+    .axis path,
+    .axis line {
+      stroke: rgba(255,255,255,0.18);
+    }
+
+    .gridline line {
+      stroke: var(--grid);
+    }
+
+    .gridline path {
+      stroke-width: 0;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    #activeFilters {
+      margin-bottom: 16px;
+    }
+
+    .insight-label {
+      fill: var(--warn);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .insight-line {
+      stroke: var(--warn);
+      stroke-width: 1.4;
+      stroke-dasharray: 4 3;
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: var(--muted);
+      font-size: 0.95rem;
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.015);
+    }
+
+    @media (max-width: 1100px) {
+      .controls {
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "bar"
+          "trend"
+          "sector";
+      }
+    }
+
+    @media (max-width: 680px) {
+      .controls,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-toggle {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title-block">
+        <h1>Exploring Crime Patterns in Calgary (2018–2024)</h1>
+        <p>
+          This dashboard compares crime counts, crime rates per 1,000 residents, time trends, and sector-level distributions.
+          Use the controls to filter the data and compare how interpretation changes across communities, years, and crime types.
+        </p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label for="crimeTypeSelect">Crime type</label>
+        <select id="crimeTypeSelect"></select>
+      </div>
+
+      <div class="control">
+        <label for="sectorSelect">Sector</label>
+        <select id="sectorSelect"></select>
+      </div>
+
+      <div class="control">
+        <label for="yearSelect">Year</label>
+        <select id="yearSelect"></select>
+      </div>
+
+      <div class="control">
+        <label for="communityFilter">Community</label>
+        <input
+          id="communityFilter"
+          list="communityOptions"
+          placeholder="Search community..."
+          autocomplete="off"
+        />
+        <datalist id="communityOptions"></datalist>
+      </div>
+
+      <div class="control">
+        <label>Metric</label>
+        <div class="metric-toggle">
+          <button id="countBtn" class="active" type="button">Crime count</button>
+          <button id="rateBtn" type="button">Crime rate / 1,000</button>
+        </div>
+      </div>
+
+      <div class="control">
+        <label>&nbsp;</label>
+        <button id="resetBtn" type="button">Reset filters</button>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="stat"><div class="k">Filtered rows</div><div class="v" id="statRows">–</div></div>
+      <div class="stat"><div class="k">Communities shown</div><div class="v" id="statCommunities">–</div></div>
+      <div class="stat"><div class="k">Total incidents</div><div class="v" id="statIncidents">–</div></div>
+      <div class="stat"><div class="k">Mean crime rate / 1,000</div><div class="v" id="statRate">–</div></div>
+    </div>
+
+    <p id="activeFilters" class="note"></p>
+
+    <div class="grid">
+      <section class="panel" id="bar-panel">
+        <h2>Top communities</h2>
+        <p class="sub">Highlights communities with the highest crime levels. Use the metric toggle to compare raw counts with normalized rates, then click a bar to view that community’s trend over time.</p>
+        <div id="bar-chart" class="chart"></div>
+      </section>
+
+      <section class="panel" id="trend-panel">
+        <h2>Crime trend over time</h2>
+        <p class="sub">Shows how crime changes across years under the current filters. This view updates when you filter by crime type, sector, year, or a selected community.</p>
+        <div id="trend-chart" class="chart"></div>
+      </section>
+
+      <section class="panel" id="sector-panel">
+        <h2>Crime rate distribution by sector</h2>
+        <p class="sub">Compares sector-level variability in crime rates. Higher spread means more variation between communities within that sector.</p>
+        <div id="sector-chart" class="chart"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const state = {
+      metric: "count",
+      crimeType: "All",
+      sector: "All",
+      year: "All",
+      selectedCommunity: null,
+      raw: [],
+    };
+
+    const colors = {
+      bar: "#6ea8fe",
+      barHover: "#8bb8ff",
+      barSelected: "#7bd389",
+      line: "#6ea8fe",
+      box: "rgba(110,168,254,0.28)",
+      boxHover: "rgba(140,180,255,0.4)",
+      median: "#7bd389",
+    };
+
+    const tooltip = d3.select("#tooltip");
+
+    const formatInt = d3.format(",");
+    const formatRate = d3.format(".2f");
+
+    const crimeTypeSelect = document.getElementById("crimeTypeSelect");
+    const sectorSelect = document.getElementById("sectorSelect");
+    const yearSelect = document.getElementById("yearSelect");
+    const communityFilter = document.getElementById("communityFilter");
+    const countBtn = document.getElementById("countBtn");
+    const rateBtn = document.getElementById("rateBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function showTooltip(event, html) {
+      tooltip.html(html)
+        .style("left", `${event.pageX + 12}px`)
+        .style("top", `${event.pageY - 18}px`)
+        .style("opacity", 1)
+        .style("transform", "translateY(0px)");
+    }
+
+    function hideTooltip() {
+      tooltip.style("opacity", 0).style("transform", "translateY(6px)");
+    }
+
+    function applyFilters(data, { includeYearForCrossSection = true } = {}) {
+      return data.filter(d => {
+        const crimeTypeOk =
+          state.crimeType === "All" || d.crime_type === state.crimeType;
+
+        const sectorOk =
+          state.sector === "All" || d.sector === state.sector;
+
+        const yearOk =
+          !includeYearForCrossSection ||
+          state.year === "All" ||
+          String(d.year) === String(state.year);
+
+        const communityOk =
+          state.selectedCommunity === null ||
+          d.community_name_join === state.selectedCommunity;
+
+        return crimeTypeOk && sectorOk && yearOk && communityOk;
+      });
+    }
+
+    function updateControlOptions() {
+      const crimeTypes = ["All", ...new Set(state.raw.map(d => d.crime_type).filter(Boolean))].sort();
+      const sectors = ["All", ...new Set(state.raw.map(d => d.sector).filter(Boolean))].sort();
+      const years = ["All", ...new Set(state.raw.map(d => String(d.year)).filter(Boolean))].sort();
+      const communities = [...new Set(
+        state.raw
+            .map(d => d.community_name_join)
+            .filter(d => d && !/^\d+[a-z]$/i.test(d))
+        )].sort();
+
+      crimeTypeSelect.innerHTML = crimeTypes.map(v => `<option value="${v}">${v}</option>`).join("");
+      sectorSelect.innerHTML = sectors.map(v => `<option value="${v}">${v}</option>`).join("");
+      yearSelect.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join("");
+
+      function toTitleCase(str) {
+        return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    document.getElementById("communityOptions").innerHTML =
+        communities.map(v => `<option value="${toTitleCase(v)}"></option>`).join("");
+
+      crimeTypeSelect.value = state.crimeType;
+      sectorSelect.value = state.sector;
+      yearSelect.value = state.year;
+      communityFilter.value = state.selectedCommunity || "";
+    }
+
+    function updateSummary(filteredCrossSection) {
+      const communities = new Set(filteredCrossSection.map(d => d.community_name_join));
+      const totalIncidents = d3.sum(filteredCrossSection, d => d.crime_count);
+      const validRates = filteredCrossSection.filter(d => Number.isFinite(d.crime_rate_per_1000));
+      const meanRate = validRates.length
+        ? d3.mean(validRates, d => d.crime_rate_per_1000)
+        : null;
+
+      document.getElementById("statRows").textContent = formatInt(filteredCrossSection.length);
+      document.getElementById("statCommunities").textContent = formatInt(communities.size);
+      document.getElementById("statIncidents").textContent = formatInt(totalIncidents || 0);
+      document.getElementById("statRate").textContent = meanRate == null ? "N/A" : formatRate(meanRate);
+    }
+
+    function updateActiveFiltersText() {
+      document.getElementById("activeFilters").textContent =
+        `Active filters → Crime type: ${state.crimeType}, Sector: ${state.sector}, Year: ${state.year}, Community: ${state.selectedCommunity || "All"}, Metric: ${state.metric === "count" ? "Crime count" : "Crime rate / 1,000"}`;
+    }
+
+    function renderBarChart(filteredCrossSection) {
+      const container = d3.select("#bar-chart");
+      container.selectAll("*").remove();
+
+      const grouped = d3.rollups(
+        filteredCrossSection,
+        values => ({
+          count: d3.sum(values, d => d.crime_count),
+          rate: d3.mean(
+            values.filter(d => Number.isFinite(d.crime_rate_per_1000)),
+            d => d.crime_rate_per_1000
+          ),
+        }),
+        d => d.community_name_join
+      ).map(([community, stats]) => ({ community, ...stats }));
+
+      const valueKey = state.metric === "count" ? "count" : "rate";
+
+      const top = grouped
+        .filter(d => state.metric === "count" || Number.isFinite(d.rate))
+        .sort((a, b) => d3.descending(a[valueKey] || -Infinity, b[valueKey] || -Infinity))
+        .slice(0, 12);
+
+      if (!top.length) {
+        container.append("div")
+          .attr("class", "empty-state")
+          .text("No community data available for the selected filters.");
+        return;
+      }
+
+      const bounds = container.node().getBoundingClientRect();
+      const width = bounds.width;
+      const height = bounds.height;
+      const margin = { top: 10, right: 20, bottom: 35, left: 170 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const svg = container.append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const xMax = d3.max(top, d => d[valueKey]) || 1;
+      const x = d3.scaleLinear().domain([0, xMax]).nice().range([0, innerWidth]);
+      const y = d3.scaleBand().domain(top.map(d => d.community)).range([0, innerHeight]).padding(0.18);
+
+      g.append("g")
+        .attr("class", "gridline")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x).tickSize(-innerHeight).tickFormat(""));
+
+      g.append("g")
+        .attr("class", "axis")
+        .call(d3.axisLeft(y).tickSize(0))
+        .selectAll("text")
+        .style("font-size", "12px");
+
+      g.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(
+          d3.axisBottom(x)
+            .ticks(5)
+            .tickFormat(state.metric === "count" ? d3.format(",.0f") : d3.format(",.1f"))
+        );
+
+      g.selectAll(".bar")
+        .data(top)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", 0)
+        .attr("y", d => y(d.community))
+        .attr("width", 0)
+        .attr("height", y.bandwidth())
+        .attr("rx", 8)
+        .attr("fill", d => state.selectedCommunity === d.community ? colors.barSelected : colors.bar)
+        .style("cursor", "pointer")
+        .on("mouseenter", (event, d) => {
+          d3.select(event.currentTarget).attr("fill", colors.barHover);
+          showTooltip(event, `
+            <strong>${d.community}</strong><br>
+            Total incidents: ${formatInt(d.count || 0)}<br>
+            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}<br>
+            <span style="color:#a7b0c6;">Click to focus on this community</span>
+          `);
+        })
+        .on("mousemove", (event, d) => {
+          showTooltip(event, `
+            <strong>${d.community}</strong><br>
+            Total incidents: ${formatInt(d.count || 0)}<br>
+            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}<br>
+            <span style="color:#a7b0c6;">Click to focus on this community</span>
+          `);
+        })
+        .on("mouseleave", (event, d) => {
+          d3.select(event.currentTarget)
+            .attr("fill", state.selectedCommunity === d.community ? colors.barSelected : colors.bar);
+          hideTooltip();
+        })
+        .on("click", (_, d) => {
+          state.selectedCommunity = state.selectedCommunity === d.community ? null : d.community;
+          communityFilter.value = state.selectedCommunity || "";
+          render();
+        })
+        .transition()
+        .duration(650)
+        .ease(d3.easeCubicOut)
+        .attr("width", d => x(d[valueKey] || 0));
+
+      g.append("text")
+        .attr("x", innerWidth)
+        .attr("y", innerHeight + 32)
+        .attr("text-anchor", "end")
+        .attr("fill", "#a7b0c6")
+        .style("font-size", "12px")
+        .text(state.metric === "count" ? "Crime count" : "Crime rate per 1,000");
+
+      const topCommunity = top[0];
+      if (topCommunity) {
+        g.append("line")
+          .attr("class", "insight-line")
+          .attr("x1", x(topCommunity[valueKey]) * 0.72)
+          .attr("x2", Math.min(innerWidth, x(topCommunity[valueKey]) + 50))
+          .attr("y1", y(topCommunity.community) + y.bandwidth() / 2)
+          .attr("y2", y(topCommunity.community) - 14);
+
+        g.append("text")
+          .attr("class", "insight-label")
+          .attr("x", Math.min(innerWidth - 10, x(topCommunity[valueKey]) + 55))
+          .attr("y", y(topCommunity.community) - 18)
+          .attr("text-anchor", "start")
+          .text("Top ranked community");
+      }
+    }
+
+    function renderTrendChart() {
+      const container = d3.select("#trend-chart");
+      container.selectAll("*").remove();
+
+      const filteredTrendBase = applyFilters(state.raw, { includeYearForCrossSection: false });
+
+      const byYear = d3.rollups(
+        filteredTrendBase,
+        values => ({
+          count: d3.sum(values, d => d.crime_count),
+          rate: d3.mean(
+            values.filter(d => Number.isFinite(d.crime_rate_per_1000)),
+            d => d.crime_rate_per_1000
+          ),
+        }),
+        d => +d.year
+      ).map(([year, stats]) => ({ year, ...stats }))
+       .sort((a, b) => d3.ascending(a.year, b.year));
+
+      if (!byYear.length) {
+        container.append("div")
+          .attr("class", "empty-state")
+          .text("No trend data available for the selected filters.");
+        return;
+      }
+
+      const bounds = container.node().getBoundingClientRect();
+      const width = bounds.width;
+      const height = bounds.height;
+      const margin = { top: 10, right: 18, bottom: 40, left: 62 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const svg = container.append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const valueKey = state.metric === "count" ? "count" : "rate";
+      const yMax = d3.max(byYear, d => d[valueKey]) || 1;
+      const peak = d3.max(byYear, d => d[valueKey]) || 0;
+      const peakYear = byYear.find(d => d[valueKey] === peak);
+      const x = d3.scalePoint().domain(byYear.map(d => d.year)).range([0, innerWidth]).padding(0.5);
+      const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
+
+      g.append("g")
+        .attr("class", "gridline")
+        .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat(""));
+
+      g.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x));
+
+      g.append("g")
+        .attr("class", "axis")
+        .call(
+          d3.axisLeft(y)
+            .ticks(5)
+            .tickFormat(state.metric === "count" ? d3.format(",.0f") : d3.format(",.1f"))
+        );
+
+      const line = d3.line()
+        .defined(d => state.metric === "count" ? Number.isFinite(d.count) : Number.isFinite(d.rate))
+        .x(d => x(d.year))
+        .y(d => y(d[valueKey]));
+
+      const path = g.append("path")
+        .datum(byYear)
+        .attr("fill", "none")
+        .attr("stroke", colors.line)
+        .attr("stroke-width", 2.8)
+        .attr("d", line);
+
+      const totalLength = path.node().getTotalLength();
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(900)
+        .ease(d3.easeCubicOut)
+        .attr("stroke-dashoffset", 0);
+
+      g.selectAll(".point")
+        .data(byYear)
+        .enter()
+        .append("circle")
+        .attr("class", "point")
+        .attr("cx", d => x(d.year))
+        .attr("cy", d => y(d[valueKey] ?? 0))
+        .attr("r", 0)
+        .attr("fill", colors.line)
+        .on("mouseenter", (event, d) => {
+          d3.select(event.currentTarget).attr("r", 6.5);
+          showTooltip(event, `
+            <strong>${d.year}</strong><br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+          `);
+        })
+        .on("mousemove", (event, d) => {
+          showTooltip(event, `
+            <strong>${d.year}</strong><br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+          `);
+        })
+        .on("mouseleave", event => {
+          d3.select(event.currentTarget).attr("r", 4.5);
+          hideTooltip();
+        })
+        .transition()
+        .delay((d, i) => 180 + i * 90)
+        .duration(300)
+        .attr("r", 4.5);
+
+      if (peakYear) {
+        g.append("line")
+          .attr("class", "insight-line")
+          .attr("x1", x(peakYear.year))
+          .attr("x2", Math.min(innerWidth, x(peakYear.year) + 52))
+          .attr("y1", y(peakYear[valueKey]))
+          .attr("y2", Math.max(16, y(peakYear[valueKey]) - 34));
+
+        g.append("text")
+          .attr("class", "insight-label")
+          .attr("x", Math.min(innerWidth - 8, x(peakYear.year) + 56))
+          .attr("y", Math.max(12, y(peakYear[valueKey]) - 38))
+          .text(`Peak in ${peakYear.year}`);
+      }
+    }
+
+    function computeBoxStats(values) {
+      const sorted = values.filter(Number.isFinite).sort(d3.ascending);
+      if (!sorted.length) return null;
+
+      const q1 = d3.quantileSorted(sorted, 0.25);
+      const median = d3.quantileSorted(sorted, 0.5);
+      const q3 = d3.quantileSorted(sorted, 0.75);
+      const iqr = q3 - q1;
+      const lowerFence = q1 - 1.5 * iqr;
+      const upperFence = q3 + 1.5 * iqr;
+      const inRange = sorted.filter(v => v >= lowerFence && v <= upperFence);
+
+      return {
+        q1,
+        median,
+        q3,
+        min: d3.min(inRange),
+        max: d3.max(inRange),
+      };
+    }
+
+    function renderSectorChart() {
+      const container = d3.select("#sector-chart");
+      container.selectAll("*").remove();
+
+      const filtered = applyFilters(state.raw, { includeYearForCrossSection: true })
+        .filter(d => Number.isFinite(d.crime_rate_per_1000) && d.sector);
+
+      const grouped = d3.rollups(
+        filtered,
+        values => computeBoxStats(values.map(d => d.crime_rate_per_1000)),
+        d => d.sector
+      ).filter(([, stats]) => stats);
+
+      const stats = grouped
+        .map(([sector, s]) => ({ sector, ...s }))
+        .sort((a, b) => d3.descending(a.median, b.median));
+
+      if (!stats.length) {
+        container.append("div")
+          .attr("class", "empty-state")
+          .text("No sector distribution data available for the selected filters.");
+        return;
+      }
+
+      const bounds = container.node().getBoundingClientRect();
+      const width = bounds.width;
+      const height = bounds.height;
+      const margin = { top: 10, right: 20, bottom: 50, left: 60 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const svg = container.append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleBand().domain(stats.map(d => d.sector)).range([0, innerWidth]).padding(0.3);
+      const yMax = d3.max(stats, d => d.max) || 1;
+      const topMedian = stats[0];
+      const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
+
+      g.append("g")
+        .attr("class", "gridline")
+        .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat(""));
+
+      g.append("g")
+        .attr("class", "axis")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .style("font-size", "12px");
+
+      g.append("g")
+        .attr("class", "axis")
+        .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format(",.1f")));
+
+      g.append("text")
+        .attr("x", -8)
+        .attr("y", -4)
+        .attr("text-anchor", "start")
+        .attr("fill", "#a7b0c6")
+        .style("font-size", "12px")
+        .text("Crime rate per 1,000");
+
+      const boxWidth = x.bandwidth();
+
+      const sectorGroup = g.selectAll(".sector-box")
+        .data(stats)
+        .enter()
+        .append("g")
+        .attr("class", "sector-box")
+        .attr("transform", d => `translate(${x(d.sector)},0)`)
+        .style("cursor", "pointer")
+        .on("mouseenter", (event, d) => {
+          d3.select(event.currentTarget).select("rect").attr("fill", colors.boxHover);
+          showTooltip(event, `
+            <strong>${d.sector}</strong><br>
+            Median: ${formatRate(d.median)}<br>
+            Q1: ${formatRate(d.q1)}<br>
+            Q3: ${formatRate(d.q3)}<br>
+            Min (non-outlier): ${formatRate(d.min)}<br>
+            Max (non-outlier): ${formatRate(d.max)}
+          `);
+        })
+        .on("mousemove", (event, d) => {
+          showTooltip(event, `
+            <strong>${d.sector}</strong><br>
+            Median: ${formatRate(d.median)}<br>
+            Q1: ${formatRate(d.q1)}<br>
+            Q3: ${formatRate(d.q3)}<br>
+            Min (non-outlier): ${formatRate(d.min)}<br>
+            Max (non-outlier): ${formatRate(d.max)}
+          `);
+        })
+        .on("mouseleave", event => {
+          d3.select(event.currentTarget).select("rect").attr("fill", colors.box);
+          hideTooltip();
+        });
+
+      sectorGroup.append("line")
+        .attr("x1", boxWidth / 2)
+        .attr("x2", boxWidth / 2)
+        .attr("y1", innerHeight)
+        .attr("y2", innerHeight)
+        .attr("stroke", "#cbd5e1")
+        .attr("stroke-width", 1.4)
+        .transition()
+        .duration(600)
+        .attr("y1", d => y(d.min))
+        .attr("y2", d => y(d.max));
+
+      sectorGroup.append("rect")
+        .attr("x", 0)
+        .attr("width", boxWidth)
+        .attr("y", d => y(d.median))
+        .attr("height", 0)
+        .attr("fill", colors.box)
+        .attr("stroke", "#8fb4ff")
+        .attr("rx", 6)
+        .transition()
+        .duration(650)
+        .ease(d3.easeCubicOut)
+        .attr("y", d => y(d.q3))
+        .attr("height", d => Math.max(1, y(d.q1) - y(d.q3)));
+
+      sectorGroup.append("line")
+        .attr("x1", 0)
+        .attr("x2", boxWidth)
+        .attr("y1", d => y(d.median))
+        .attr("y2", d => y(d.median))
+        .attr("stroke", colors.median)
+        .attr("stroke-width", 2.2);
+
+      sectorGroup.append("line")
+        .attr("x1", boxWidth * 0.2)
+        .attr("x2", boxWidth * 0.8)
+        .attr("y1", innerHeight)
+        .attr("y2", innerHeight)
+        .attr("stroke", "#cbd5e1")
+        .attr("stroke-width", 1.4)
+        .transition()
+        .duration(600)
+        .attr("y1", d => y(d.min))
+        .attr("y2", d => y(d.min));
+
+      sectorGroup.append("line")
+        .attr("x1", boxWidth * 0.2)
+        .attr("x2", boxWidth * 0.8)
+        .attr("y1", innerHeight)
+        .attr("y2", innerHeight)
+        .attr("stroke", "#cbd5e1")
+        .attr("stroke-width", 1.4)
+        .transition()
+        .duration(600)
+        .attr("y1", d => y(d.max))
+        .attr("y2", d => y(d.max));
+
+      if (topMedian) {
+        g.append("line")
+          .attr("class", "insight-line")
+          .attr("x1", x(topMedian.sector) + boxWidth / 2)
+          .attr("x2", Math.min(innerWidth, x(topMedian.sector) + boxWidth / 2 + 58))
+          .attr("y1", y(topMedian.median))
+          .attr("y2", Math.max(16, y(topMedian.median) - 26));
+
+        g.append("text")
+          .attr("class", "insight-label")
+          .attr("x", Math.min(innerWidth - 8, x(topMedian.sector) + boxWidth / 2 + 62))
+          .attr("y", Math.max(12, y(topMedian.median) - 30))
+          .text("Highest median rate");
+      }
+    }
+
+    function render() {
+      const filteredCrossSection = applyFilters(state.raw, { includeYearForCrossSection: true });
+      updateSummary(filteredCrossSection);
+      updateActiveFiltersText();
+      renderBarChart(filteredCrossSection);
+      renderTrendChart();
+      renderSectorChart();
+    }
+
+    function attachEvents() {
+      crimeTypeSelect.addEventListener("change", e => {
+        state.crimeType = e.target.value;
+        render();
+      });
+
+      sectorSelect.addEventListener("change", e => {
+        state.sector = e.target.value;
+        render();
+      });
+
+      yearSelect.addEventListener("change", e => {
+        state.year = e.target.value;
+        render();
+      });
+
+      communityFilter.addEventListener("input", e => {
+        const value = e.target.value.trim().toLowerCase();
+        if (value === "") {
+            state.selectedCommunity = null;
+        } else {
+            const exists = state.raw.some(
+            d => d.community_name_join &&
+                d.community_name_join.toLowerCase() === value
+            );
+            state.selectedCommunity = exists ? value : null;
+        }
+        render();
+        });
+
+      countBtn.addEventListener("click", () => {
+        state.metric = "count";
+        countBtn.classList.add("active");
+        rateBtn.classList.remove("active");
+        render();
+      });
+
+      rateBtn.addEventListener("click", () => {
+        state.metric = "rate";
+        rateBtn.classList.add("active");
+        countBtn.classList.remove("active");
+        render();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        state.crimeType = "All";
+        state.sector = "All";
+        state.year = "All";
+        state.metric = "count";
+        state.selectedCommunity = null;
+
+        crimeTypeSelect.value = "All";
+        sectorSelect.value = "All";
+        yearSelect.value = "All";
+        communityFilter.value = "";
+
+        countBtn.classList.add("active");
+        rateBtn.classList.remove("active");
+
+        render();
+      });
+
+      window.addEventListener("resize", render);
+    }
+
+    d3.csv("part2_outputs/final_clean_with_rates.csv", d3.autoType)
+      .then(data => {
+        state.raw = data.map(d => ({
+          ...d,
+          crime_count: +d.crime_count,
+          population_2019: d.population_2019 == null ? null : +d.population_2019,
+          crime_rate_per_1000: d.crime_rate_per_1000 == null || d.crime_rate_per_1000 === "" ? null : +d.crime_rate_per_1000,
+          year: +d.year,
+        }));
+
+        updateControlOptions();
+        attachEvents();
+        render();
+      })
+      .catch(error => {
+        console.error(error);
+        document.querySelector(".wrap").insertAdjacentHTML(
+          "beforeend",
+          `<p style="margin-top:16px;color:#ffb4b4;line-height:1.5;">Failed to load <code>part2_outputs/final_clean_with_rates.csv</code>. If you are opening this file directly in the browser, run a small local server first (for example: <code>python3 -m http.server</code>) and then open the local URL.</p>`
+        );
+      });
+  </script>
+</body>
+</html>
