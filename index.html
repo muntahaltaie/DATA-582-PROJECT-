@@ -354,7 +354,6 @@
       <div class="stat"><div class="k">Mean crime rate / 1,000</div><div class="v" id="statRate">–</div></div>
     </div>
 
-    <p id="activeFilters" class="note"></p>
 
     <div class="grid">
       <section class="panel" id="bar-panel">
@@ -484,11 +483,6 @@
       document.getElementById("statCommunities").textContent = formatInt(communities.size);
       document.getElementById("statIncidents").textContent = formatInt(totalIncidents || 0);
       document.getElementById("statRate").textContent = meanRate == null ? "N/A" : formatRate(meanRate);
-    }
-
-    function updateActiveFiltersText() {
-      document.getElementById("activeFilters").textContent =
-        `Active filters → Crime type: ${state.crimeType}, Sector: ${state.sector}, Year: ${state.year}, Community: ${state.selectedCommunity || "All"}, Metric: ${state.metric === "count" ? "Crime count" : "Crime rate / 1,000"}`;
     }
 
     function renderBarChart(filteredCrossSection) {
@@ -962,7 +956,6 @@
     function render() {
       const filteredCrossSection = applyFilters(state.raw, { includeYearForCrossSection: true });
       updateSummary(filteredCrossSection);
-      updateActiveFiltersText();
       renderBarChart(filteredCrossSection);
       renderTrendChart();
       renderSectorChart();
