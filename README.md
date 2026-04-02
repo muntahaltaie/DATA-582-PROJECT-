@@ -13,11 +13,11 @@ DATA-582-PROJECT-
 │  
 ├── index.html  
 ├── part2_outputs/  
-│   └── final_clean_with_rates.csv 
-├── TCPS2 CORE CERTIFICATE.pdf
-├── Evaluation Write Up.pdf
-├── FINAL CONSENT FORM.pdf
-├── README.md  
+│   └── final_clean_with_rates.csv  
+├── TCPS2 CORE CERTIFICATE.pdf  
+├── Evaluation Write Up.pdf  
+├── FINAL CONSENT FORM.pdf  
+├── README.md 
 
 ## How to Run Locally  
 If opening the dashboard locally, run a simple server:
