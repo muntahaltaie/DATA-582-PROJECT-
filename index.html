@@ -13,7 +13,7 @@
       --text: #eef2ff;
       --muted: #a7b0c6;
       --accent: #6ea8fe;
-      --grid: rgba(255,255,255,0.08);
+      --grid: rgba(255,255,255,0.05);
       --border: rgba(255,255,255,0.1);
       --good: #7bd389;
       --warn: #ffd166;
@@ -29,7 +29,7 @@
     }
 
     .wrap {
-      max-width: 1500px;
+      max-width: 1520px;
       margin: 0 auto;
       padding: 24px;
     }
@@ -58,9 +58,9 @@
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      grid-template-columns: repeat(7, minmax(150px, 1fr));
       gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
 
     .control {
@@ -131,11 +131,18 @@
       color: var(--good);
     }
 
+    .helper {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
     .summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(160px, 1fr));
       gap: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
     }
 
     .stat {
@@ -162,7 +169,7 @@
       grid-template-areas:
         "bar trend"
         "sector sector";
-      gap: 16px;
+      gap: 18px;
     }
 
     .panel {
@@ -175,23 +182,32 @@
     }
 
     .panel h2 {
-      font-size: 1.05rem;
-      margin-bottom: 4px;
+      font-size: 1.12rem;
+      margin-bottom: 6px;
     }
 
     .panel p.sub {
       font-size: 0.9rem;
       color: var(--muted);
-      margin-bottom: 12px;
-      line-height: 1.4;
+      margin-bottom: 14px;
+      line-height: 1.45;
+    }
+
+    .dynamic-note {
+      margin-top: 8px;
+      color: var(--warn);
+      font-size: 0.84rem;
+      line-height: 1.35;
+      min-height: 18px;
+      font-weight: 600;
     }
 
     #bar-panel { grid-area: bar; }
     #trend-panel { grid-area: trend; }
-    #sector-panel { grid-area: sector; min-height: 480px; }
+    #sector-panel { grid-area: sector; min-height: 520px; }
 
     .chart { width: 100%; height: 350px; }
-    #sector-chart { height: 400px; }
+    #sector-chart { height: 430px; }
 
     .tooltip {
       position: absolute;
@@ -228,29 +244,6 @@
       stroke-width: 0;
     }
 
-    .note {
-      color: var(--muted);
-      font-size: 0.86rem;
-      margin-top: 10px;
-      line-height: 1.4;
-    }
-
-    #activeFilters {
-      margin-bottom: 16px;
-    }
-
-    .insight-label {
-      fill: var(--warn);
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .insight-line {
-      stroke: var(--warn);
-      stroke-width: 1.4;
-      stroke-dasharray: 4 3;
-    }
-
     .empty-state {
       display: flex;
       align-items: center;
@@ -262,11 +255,14 @@
       border: 1px dashed rgba(255,255,255,0.12);
       border-radius: 16px;
       background: rgba(255,255,255,0.015);
+      text-align: center;
+      line-height: 1.5;
+      padding: 24px;
     }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1200px) {
       .controls {
-        grid-template-columns: repeat(2, minmax(160px, 1fr));
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
       }
 
       .summary {
@@ -282,7 +278,7 @@
       }
     }
 
-    @media (max-width: 680px) {
+    @media (max-width: 700px) {
       .controls,
       .summary {
         grid-template-columns: 1fr;
@@ -300,8 +296,8 @@
       <div class="title-block">
         <h1>Exploring Crime Patterns in Calgary (2018–2024)</h1>
         <p>
-          This dashboard compares crime counts, crime rates per 1,000 residents, time trends, and sector-level distributions.
-          Use the controls to filter the data and compare how interpretation changes across communities, years, and crime types.
+          This dashboard compares crime counts, crime rates per 1,000 residents, time trends, and sector-level community distributions.
+          Use the controls to explore how crime patterns change across communities, years, and crime types.
         </p>
       </div>
     </div>
@@ -318,8 +314,13 @@
       </div>
 
       <div class="control">
-        <label for="yearSelect">Year</label>
-        <select id="yearSelect"></select>
+        <label for="startYearSelect">Start year</label>
+        <select id="startYearSelect"></select>
+      </div>
+
+      <div class="control">
+        <label for="endYearSelect">End year</label>
+        <select id="endYearSelect"></select>
       </div>
 
       <div class="control">
@@ -347,6 +348,8 @@
       </div>
     </div>
 
+    <p class="helper" id="active-filters"></p>
+
     <div class="summary">
       <div class="stat"><div class="k">Filtered rows</div><div class="v" id="statRows">–</div></div>
       <div class="stat"><div class="k">Communities shown</div><div class="v" id="statCommunities">–</div></div>
@@ -354,23 +357,24 @@
       <div class="stat"><div class="k">Mean crime rate / 1,000</div><div class="v" id="statRate">–</div></div>
     </div>
 
-
     <div class="grid">
       <section class="panel" id="bar-panel">
-        <h2>Top communities</h2>
-        <p class="sub">Highlights communities with the highest crime levels. Use the metric toggle to compare raw counts with normalized rates, then click a bar to view that community’s trend over time.</p>
+        <h2 id="bar-title">Top communities</h2>
+        <p class="sub" id="bar-sub">Ranks communities under the current filters.</p>
         <div id="bar-chart" class="chart"></div>
+        <p class="dynamic-note" id="bar-note"></p>
       </section>
 
       <section class="panel" id="trend-panel">
-        <h2>Crime trend over time</h2>
-        <p class="sub">Shows how crime changes across years under the current filters. This view updates when you filter by crime type, sector, year, or a selected community.</p>
+        <h2 id="trend-title">Crime trend over time</h2>
+        <p class="sub" id="trend-sub">Shows how the selected data changes across years.</p>
         <div id="trend-chart" class="chart"></div>
+        <p class="dynamic-note" id="trend-note"></p>
       </section>
 
       <section class="panel" id="sector-panel">
-        <h2>Crime rate distribution by sector</h2>
-        <p class="sub">Compares sector-level variability in crime rates. Higher spread means more variation between communities within that sector.</p>
+        <h2 id="sector-title">Community distribution by sector</h2>
+        <p class="sub" id="sector-sub">Shows individual communities within each sector.</p>
         <div id="sector-chart" class="chart"></div>
       </section>
     </div>
@@ -383,9 +387,10 @@
       metric: "count",
       crimeType: "All",
       sector: "All",
-      year: "All",
+      startYear: "All",
+      endYear: "All",
       selectedCommunity: null,
-      raw: [],
+      raw: []
     };
 
     const colors = {
@@ -393,9 +398,7 @@
       barHover: "#8bb8ff",
       barSelected: "#7bd389",
       line: "#6ea8fe",
-      box: "rgba(110,168,254,0.28)",
-      boxHover: "rgba(140,180,255,0.4)",
-      median: "#7bd389",
+      dotSelected: "#7bd389"
     };
 
     const tooltip = d3.select("#tooltip");
@@ -405,11 +408,20 @@
 
     const crimeTypeSelect = document.getElementById("crimeTypeSelect");
     const sectorSelect = document.getElementById("sectorSelect");
-    const yearSelect = document.getElementById("yearSelect");
+    const startYearSelect = document.getElementById("startYearSelect");
+    const endYearSelect = document.getElementById("endYearSelect");
     const communityFilter = document.getElementById("communityFilter");
     const countBtn = document.getElementById("countBtn");
     const rateBtn = document.getElementById("rateBtn");
     const resetBtn = document.getElementById("resetBtn");
+
+    function toTitleCase(str) {
+      return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
 
     function showTooltip(event, html) {
       tooltip.html(html)
@@ -423,23 +435,28 @@
       tooltip.style("opacity", 0).style("transform", "translateY(6px)");
     }
 
-    function applyFilters(data, { includeYearForCrossSection = true } = {}) {
+    function getYearRange() {
+      const years = [...new Set(state.raw.map(d => +d.year))].sort((a, b) => a - b);
+      if (!years.length) return { start: null, end: null };
+
+      let start = state.startYear === "All" ? years[0] : +state.startYear;
+      let end = state.endYear === "All" ? years[years.length - 1] : +state.endYear;
+
+      if (start > end) {
+        [start, end] = [end, start];
+      }
+
+      return { start, end };
+    }
+
+    function applyFilters(data, { includeYear = true, includeCommunity = true } = {}) {
+      const { start, end } = getYearRange();
+
       return data.filter(d => {
-        const crimeTypeOk =
-          state.crimeType === "All" || d.crime_type === state.crimeType;
-
-        const sectorOk =
-          state.sector === "All" || d.sector === state.sector;
-
-        const yearOk =
-          !includeYearForCrossSection ||
-          state.year === "All" ||
-          String(d.year) === String(state.year);
-
-        const communityOk =
-          state.selectedCommunity === null ||
-          d.community_name_join === state.selectedCommunity;
-
+        const crimeTypeOk = state.crimeType === "All" || d.crime_type === state.crimeType;
+        const sectorOk = state.sector === "All" || d.sector === state.sector;
+        const yearOk = !includeYear || (+d.year >= start && +d.year <= end);
+        const communityOk = !includeCommunity || state.selectedCommunity === null || d.community_name_join === state.selectedCommunity;
         return crimeTypeOk && sectorOk && yearOk && communityOk;
       });
     }
@@ -447,50 +464,88 @@
     function updateControlOptions() {
       const crimeTypes = ["All", ...new Set(state.raw.map(d => d.crime_type).filter(Boolean))].sort();
       const sectors = ["All", ...new Set(state.raw.map(d => d.sector).filter(Boolean))].sort();
-      const years = ["All", ...new Set(state.raw.map(d => String(d.year)).filter(Boolean))].sort();
+      const years = [...new Set(state.raw.map(d => String(d.year)).filter(Boolean))].sort();
       const communities = [...new Set(
         state.raw
-            .map(d => d.community_name_join)
-            .filter(d => d && !/^\d+[a-z]$/i.test(d))
-        )].sort();
+          .map(d => d.community_name_join)
+          .filter(d => d && !/^\d+[a-z]$/i.test(d))
+      )].sort();
 
       crimeTypeSelect.innerHTML = crimeTypes.map(v => `<option value="${v}">${v}</option>`).join("");
       sectorSelect.innerHTML = sectors.map(v => `<option value="${v}">${v}</option>`).join("");
-      yearSelect.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join("");
-
-      function toTitleCase(str) {
-        return str.replace(/\b\w/g, c => c.toUpperCase());
-    }
-
-    document.getElementById("communityOptions").innerHTML =
+      startYearSelect.innerHTML = ["All", ...years].map(v => `<option value="${v}">${v}</option>`).join("");
+      endYearSelect.innerHTML = ["All", ...years].map(v => `<option value="${v}">${v}</option>`).join("");
+      document.getElementById("communityOptions").innerHTML =
         communities.map(v => `<option value="${toTitleCase(v)}"></option>`).join("");
 
       crimeTypeSelect.value = state.crimeType;
       sectorSelect.value = state.sector;
-      yearSelect.value = state.year;
-      communityFilter.value = state.selectedCommunity || "";
+      startYearSelect.value = state.startYear;
+      endYearSelect.value = state.endYear;
+      communityFilter.value = state.selectedCommunity ? toTitleCase(state.selectedCommunity) : "";
     }
 
-    function updateSummary(filteredCrossSection) {
-      const communities = new Set(filteredCrossSection.map(d => d.community_name_join));
-      const totalIncidents = d3.sum(filteredCrossSection, d => d.crime_count);
-      const validRates = filteredCrossSection.filter(d => Number.isFinite(d.crime_rate_per_1000));
-      const meanRate = validRates.length
-        ? d3.mean(validRates, d => d.crime_rate_per_1000)
-        : null;
+    function updateSummary(filteredData) {
+      const communities = new Set(filteredData.map(d => d.community_name_join));
+      const totalIncidents = d3.sum(filteredData, d => d.crime_count);
+      const validRates = filteredData.filter(d => Number.isFinite(d.crime_rate_per_1000));
+      const meanRate = validRates.length ? d3.mean(validRates, d => d.crime_rate_per_1000) : null;
 
-      document.getElementById("statRows").textContent = formatInt(filteredCrossSection.length);
+      document.getElementById("statRows").textContent = formatInt(filteredData.length);
       document.getElementById("statCommunities").textContent = formatInt(communities.size);
       document.getElementById("statIncidents").textContent = formatInt(totalIncidents || 0);
       document.getElementById("statRate").textContent = meanRate == null ? "N/A" : formatRate(meanRate);
     }
 
-    function renderBarChart(filteredCrossSection) {
+    function updateActiveFilters() {
+      const { start, end } = getYearRange();
+      const rangeLabel = start === end ? `${start}` : `${start}–${end}`;
+      const metricLabel = state.metric === "count" ? "crime count" : "crime rate / 1,000";
+      const crimeLabel = state.crimeType === "All" ? "all crime types" : state.crimeType;
+      const sectorLabel = state.sector === "All" ? "all sectors" : state.sector;
+      const communityLabel = state.selectedCommunity ? toTitleCase(state.selectedCommunity) : "all communities";
+
+      document.getElementById("active-filters").textContent =
+        `Showing: ${crimeLabel} | ${sectorLabel} | ${rangeLabel} | ${communityLabel} | ${metricLabel}`;
+    }
+
+    function updateTitles() {
+      const metricLabel = state.metric === "count" ? "crime count" : "crime rate / 1,000";
+      const crimeLabel = state.crimeType === "All" ? "all crime types" : state.crimeType;
+      const sectorLabel = state.sector === "All" ? "all sectors" : state.sector;
+      const communityLabel = state.selectedCommunity ? toTitleCase(state.selectedCommunity) : null;
+      const { start, end } = getYearRange();
+      const rangeLabel = start === end ? `${start}` : `${start}–${end}`;
+
+      document.getElementById("bar-title").textContent =
+        communityLabel ? `Community value: ${communityLabel}` :
+        (start === end ? `Top 10 communities for ${rangeLabel}` : `Top 10 communities (${rangeLabel})`);
+
+      document.getElementById("bar-sub").textContent =
+        communityLabel
+          ? `Shows ${metricLabel} for ${communityLabel} under the current filters.`
+          : `Ranked by ${metricLabel} for ${crimeLabel}, ${sectorLabel}, and all communities.`;
+
+      document.getElementById("trend-title").textContent = communityLabel
+        ? `Crime trend over time: ${communityLabel}`
+        : "Crime trend over time";
+
+      document.getElementById("trend-sub").textContent =
+        `Shows how ${metricLabel} changes across ${rangeLabel} for ${crimeLabel} in ${sectorLabel}.`;
+
+      document.getElementById("sector-title").textContent =
+        state.metric === "count" ? "Community counts by sector" : "Community rates by sector";
+    }
+
+    function renderBarChart() {
       const container = d3.select("#bar-chart");
       container.selectAll("*").remove();
+      document.getElementById("bar-note").textContent = "";
+
+      const displayData = applyFilters(state.raw, { includeYear: true, includeCommunity: true });
 
       const grouped = d3.rollups(
-        filteredCrossSection,
+        displayData,
         values => ({
           count: d3.sum(values, d => d.crime_count),
           rate: d3.mean(
@@ -506,7 +561,7 @@
       const top = grouped
         .filter(d => state.metric === "count" || Number.isFinite(d.rate))
         .sort((a, b) => d3.descending(a[valueKey] || -Infinity, b[valueKey] || -Infinity))
-        .slice(0, 12);
+        .slice(0, state.selectedCommunity ? 1 : 10);
 
       if (!top.length) {
         container.append("div")
@@ -518,7 +573,7 @@
       const bounds = container.node().getBoundingClientRect();
       const width = bounds.width;
       const height = bounds.height;
-      const margin = { top: 10, right: 20, bottom: 35, left: 170 };
+      const margin = { top: 18, right: 20, bottom: 35, left: 190 };
       const innerWidth = width - margin.left - margin.right;
       const innerHeight = height - margin.top - margin.bottom;
 
@@ -529,9 +584,9 @@
       const g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      const xMax = d3.max(top, d => d[valueKey]) || 1;
+      const xMax = d3.max(top, d => d[valueKey] || 0) || 1;
       const x = d3.scaleLinear().domain([0, xMax]).nice().range([0, innerWidth]);
-      const y = d3.scaleBand().domain(top.map(d => d.community)).range([0, innerHeight]).padding(0.18);
+      const y = d3.scaleBand().domain(top.map(d => d.community)).range([0, innerHeight]).padding(0.25);
 
       g.append("g")
         .attr("class", "gridline")
@@ -542,6 +597,7 @@
         .attr("class", "axis")
         .call(d3.axisLeft(y).tickSize(0))
         .selectAll("text")
+        .text(d => toTitleCase(d))
         .style("font-size", "12px");
 
       g.append("g")
@@ -560,7 +616,7 @@
         .attr("class", "bar")
         .attr("x", 0)
         .attr("y", d => y(d.community))
-        .attr("width", 0)
+        .attr("width", d => x(d[valueKey] || 0))
         .attr("height", y.bandwidth())
         .attr("rx", 8)
         .attr("fill", d => state.selectedCommunity === d.community ? colors.barSelected : colors.bar)
@@ -568,18 +624,16 @@
         .on("mouseenter", (event, d) => {
           d3.select(event.currentTarget).attr("fill", colors.barHover);
           showTooltip(event, `
-            <strong>${d.community}</strong><br>
-            Total incidents: ${formatInt(d.count || 0)}<br>
-            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}<br>
-            <span style="color:#a7b0c6;">Click to focus on this community</span>
+            <strong>${toTitleCase(d.community)}</strong><br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
           `);
         })
         .on("mousemove", (event, d) => {
           showTooltip(event, `
-            <strong>${d.community}</strong><br>
-            Total incidents: ${formatInt(d.count || 0)}<br>
-            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}<br>
-            <span style="color:#a7b0c6;">Click to focus on this community</span>
+            <strong>${toTitleCase(d.community)}</strong><br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
           `);
         })
         .on("mouseleave", (event, d) => {
@@ -589,13 +643,9 @@
         })
         .on("click", (_, d) => {
           state.selectedCommunity = state.selectedCommunity === d.community ? null : d.community;
-          communityFilter.value = state.selectedCommunity || "";
+          communityFilter.value = state.selectedCommunity ? toTitleCase(state.selectedCommunity) : "";
           render();
-        })
-        .transition()
-        .duration(650)
-        .ease(d3.easeCubicOut)
-        .attr("width", d => x(d[valueKey] || 0));
+        });
 
       g.append("text")
         .attr("x", innerWidth)
@@ -605,29 +655,22 @@
         .style("font-size", "12px")
         .text(state.metric === "count" ? "Crime count" : "Crime rate per 1,000");
 
-      const topCommunity = top[0];
-      if (topCommunity) {
-        g.append("line")
-          .attr("class", "insight-line")
-          .attr("x1", x(topCommunity[valueKey]) * 0.72)
-          .attr("x2", Math.min(innerWidth, x(topCommunity[valueKey]) + 50))
-          .attr("y1", y(topCommunity.community) + y.bandwidth() / 2)
-          .attr("y2", y(topCommunity.community) - 14);
+      const highest = top[0];
+      const second = top[1];
 
-        g.append("text")
-          .attr("class", "insight-label")
-          .attr("x", Math.min(innerWidth - 10, x(topCommunity[valueKey]) + 55))
-          .attr("y", y(topCommunity.community) - 18)
-          .attr("text-anchor", "start")
-          .text("Top ranked community");
+      if (!state.selectedCommunity && highest && second && (second[valueKey] || 0) > 0) {
+        const pctAbove = ((highest[valueKey] - second[valueKey]) / second[valueKey]) * 100;
+        document.getElementById("bar-note").textContent =
+          `${toTitleCase(highest.community)} is ${pctAbove.toFixed(0)}% higher than ${toTitleCase(second.community)} under the current filters.`;
       }
     }
 
     function renderTrendChart() {
       const container = d3.select("#trend-chart");
       container.selectAll("*").remove();
+      document.getElementById("trend-note").textContent = "";
 
-      const filteredTrendBase = applyFilters(state.raw, { includeYearForCrossSection: false });
+      const filteredTrendBase = applyFilters(state.raw, { includeYear: true, includeCommunity: true });
 
       const byYear = d3.rollups(
         filteredTrendBase,
@@ -640,7 +683,7 @@
         }),
         d => +d.year
       ).map(([year, stats]) => ({ year, ...stats }))
-       .sort((a, b) => d3.ascending(a.year, b.year));
+        .sort((a, b) => d3.ascending(a.year, b.year));
 
       if (!byYear.length) {
         container.append("div")
@@ -652,7 +695,7 @@
       const bounds = container.node().getBoundingClientRect();
       const width = bounds.width;
       const height = bounds.height;
-      const margin = { top: 10, right: 18, bottom: 40, left: 62 };
+      const margin = { top: 28, right: 42, bottom: 40, left: 62 };
       const innerWidth = width - margin.left - margin.right;
       const innerHeight = height - margin.top - margin.bottom;
 
@@ -665,8 +708,6 @@
 
       const valueKey = state.metric === "count" ? "count" : "rate";
       const yMax = d3.max(byYear, d => d[valueKey]) || 1;
-      const peak = d3.max(byYear, d => d[valueKey]) || 0;
-      const peakYear = byYear.find(d => d[valueKey] === peak);
       const x = d3.scalePoint().domain(byYear.map(d => d.year)).range([0, innerWidth]).padding(0.5);
       const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
 
@@ -692,21 +733,12 @@
         .x(d => x(d.year))
         .y(d => y(d[valueKey]));
 
-      const path = g.append("path")
+      g.append("path")
         .datum(byYear)
         .attr("fill", "none")
         .attr("stroke", colors.line)
         .attr("stroke-width", 2.8)
         .attr("d", line);
-
-      const totalLength = path.node().getTotalLength();
-      path
-        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
-        .attr("stroke-dashoffset", totalLength)
-        .transition()
-        .duration(900)
-        .ease(d3.easeCubicOut)
-        .attr("stroke-dashoffset", 0);
 
       g.selectAll(".point")
         .data(byYear)
@@ -715,97 +747,132 @@
         .attr("class", "point")
         .attr("cx", d => x(d.year))
         .attr("cy", d => y(d[valueKey] ?? 0))
-        .attr("r", 0)
+        .attr("r", 4.5)
         .attr("fill", colors.line)
         .on("mouseenter", (event, d) => {
           d3.select(event.currentTarget).attr("r", 6.5);
           showTooltip(event, `
             <strong>${d.year}</strong><br>
             Crime count: ${formatInt(d.count || 0)}<br>
-            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
           `);
         })
         .on("mousemove", (event, d) => {
           showTooltip(event, `
             <strong>${d.year}</strong><br>
             Crime count: ${formatInt(d.count || 0)}<br>
-            Mean crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
           `);
         })
         .on("mouseleave", event => {
           d3.select(event.currentTarget).attr("r", 4.5);
           hideTooltip();
-        })
-        .transition()
-        .delay((d, i) => 180 + i * 90)
-        .duration(300)
-        .attr("r", 4.5);
+        });
+
+      const peak = d3.max(byYear, d => d[valueKey]);
+      const peakYear = byYear.find(d => d[valueKey] === peak);
 
       if (peakYear) {
+        const peakX = x(peakYear.year);
+        const peakY = y(peakYear[valueKey]);
+        const labelX = clamp(peakX + 34, 8, innerWidth - 78);
+        const labelY = clamp(peakY - 16, 14, innerHeight - 8);
+
         g.append("line")
-          .attr("class", "insight-line")
-          .attr("x1", x(peakYear.year))
-          .attr("x2", Math.min(innerWidth, x(peakYear.year) + 52))
-          .attr("y1", y(peakYear[valueKey]))
-          .attr("y2", Math.max(16, y(peakYear[valueKey]) - 34));
+          .attr("x1", peakX)
+          .attr("x2", labelX - 6)
+          .attr("y1", peakY)
+          .attr("y2", labelY + 2)
+          .attr("stroke", "#ffd166")
+          .attr("stroke-width", 1.2)
+          .attr("stroke-dasharray", "4 3");
 
         g.append("text")
-          .attr("class", "insight-label")
-          .attr("x", Math.min(innerWidth - 8, x(peakYear.year) + 56))
-          .attr("y", Math.max(12, y(peakYear[valueKey]) - 38))
+          .attr("x", labelX)
+          .attr("y", labelY)
+          .attr("fill", "#ffd166")
+          .style("font-size", "11px")
+          .style("font-weight", "600")
           .text(`Peak in ${peakYear.year}`);
+      }
+
+      const firstVal = byYear[0]?.[valueKey];
+      const lastVal = byYear[byYear.length - 1]?.[valueKey];
+
+      if (Number.isFinite(firstVal) && Number.isFinite(lastVal) && firstVal !== 0) {
+        const pctChange = ((lastVal - firstVal) / firstVal) * 100;
+        const direction = pctChange >= 0 ? "increase" : "decrease";
+        document.getElementById("trend-note").textContent =
+          `${Math.abs(pctChange).toFixed(0)}% ${direction} from ${byYear[0].year} to ${byYear[byYear.length - 1].year} under the current filters.`;
       }
     }
 
-    function computeBoxStats(values) {
-      const sorted = values.filter(Number.isFinite).sort(d3.ascending);
-      if (!sorted.length) return null;
-
-      const q1 = d3.quantileSorted(sorted, 0.25);
-      const median = d3.quantileSorted(sorted, 0.5);
-      const q3 = d3.quantileSorted(sorted, 0.75);
-      const iqr = q3 - q1;
-      const lowerFence = q1 - 1.5 * iqr;
-      const upperFence = q3 + 1.5 * iqr;
-      const inRange = sorted.filter(v => v >= lowerFence && v <= upperFence);
-
-      return {
-        q1,
-        median,
-        q3,
-        min: d3.min(inRange),
-        max: d3.max(inRange),
-      };
+    function getJitter(seed) {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
     }
 
     function renderSectorChart() {
       const container = d3.select("#sector-chart");
       container.selectAll("*").remove();
 
-      const filtered = applyFilters(state.raw, { includeYearForCrossSection: true })
-        .filter(d => Number.isFinite(d.crime_rate_per_1000) && d.sector);
+      if (state.sector === "All") {
+        document.getElementById("sector-sub").textContent =
+          "Select a specific sector to view the community distribution plot. This view is designed to compare communities within one sector at a time.";
+
+        container.append("div")
+          .attr("class", "empty-state")
+          .html("Select a <strong>specific sector</strong> above to activate this view.<br><br>This chart shows individual community values within a single sector, along with that sector’s median.");
+        return;
+      }
+
+      const filtered = applyFilters(state.raw, { includeYear: true, includeCommunity: false });
 
       const grouped = d3.rollups(
         filtered,
-        values => computeBoxStats(values.map(d => d.crime_rate_per_1000)),
-        d => d.sector
-      ).filter(([, stats]) => stats);
+        values => ({
+          count: d3.sum(values, d => d.crime_count),
+          rate: d3.mean(
+            values.filter(d => Number.isFinite(d.crime_rate_per_1000)),
+            d => d.crime_rate_per_1000
+          )
+        }),
+        d => d.sector,
+        d => d.community_name_join
+      );
 
-      const stats = grouped
-        .map(([sector, s]) => ({ sector, ...s }))
-        .sort((a, b) => d3.descending(a.median, b.median));
+      const data = grouped.flatMap(([sector, communities]) =>
+        communities.map(([community, stats], i) => ({
+          sector,
+          community,
+          count: stats.count,
+          rate: stats.rate,
+          value: state.metric === "count" ? stats.count : stats.rate,
+          jitterSeed: i + sector.length
+        }))
+      ).filter(d => state.metric === "count" || Number.isFinite(d.rate));
 
-      if (!stats.length) {
+      if (!data.length) {
+        document.getElementById("sector-sub").textContent =
+          "No sector distribution data is available for the current filters.";
+
         container.append("div")
           .attr("class", "empty-state")
-          .text("No sector distribution data available for the selected filters.");
+          .text("No sector distribution data is available for the current filters.");
         return;
       }
+
+      const sectors = [...new Set(data.map(d => d.sector))];
+      const communityCountsBySector = d3.rollup(data, values => values.length, d => d.sector);
+      const selectedSectorCount = communityCountsBySector.get(state.sector) || 0;
+
+      document.getElementById("sector-sub").textContent =
+        `Each point represents one community in ${state.sector} under the current filters. ${selectedSectorCount} communities are currently shown in this sector.`;
 
       const bounds = container.node().getBoundingClientRect();
       const width = bounds.width;
       const height = bounds.height;
-      const margin = { top: 10, right: 20, bottom: 50, left: 60 };
+      const margin = { top: 22, right: 30, bottom: 50, left: 70 };
       const innerWidth = width - margin.left - margin.right;
       const innerHeight = height - margin.top - margin.bottom;
 
@@ -816,10 +883,20 @@
       const g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      const x = d3.scaleBand().domain(stats.map(d => d.sector)).range([0, innerWidth]).padding(0.3);
-      const yMax = d3.max(stats, d => d.max) || 1;
-      const topMedian = stats[0];
-      const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
+      const x = d3.scaleBand()
+        .domain(sectors)
+        .range([0, innerWidth])
+        .padding(0.25);
+
+      const yMax = d3.max(data, d => d.value) || 1;
+      const y = d3.scaleLinear()
+        .domain([0, yMax])
+        .nice()
+        .range([innerHeight, 0]);
+
+      const colorScale = d3.scaleLinear()
+        .domain([0, yMax])
+        .range(["#7ea4e8", "#d8e6ff"]);
 
       g.append("g")
         .attr("class", "gridline")
@@ -828,13 +905,15 @@
       g.append("g")
         .attr("class", "axis")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .style("font-size", "12px");
+        .call(d3.axisBottom(x));
 
       g.append("g")
         .attr("class", "axis")
-        .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format(",.1f")));
+        .call(
+          d3.axisLeft(y)
+            .ticks(6)
+            .tickFormat(state.metric === "count" ? d3.format(",.0f") : d3.format(",.1f"))
+        );
 
       g.append("text")
         .attr("x", -8)
@@ -842,121 +921,141 @@
         .attr("text-anchor", "start")
         .attr("fill", "#a7b0c6")
         .style("font-size", "12px")
-        .text("Crime rate per 1,000");
+        .text(state.metric === "count" ? "Crime count" : "Crime rate per 1,000");
 
-      const boxWidth = x.bandwidth();
+      const sectorMedians = d3.rollups(
+        data,
+        values => d3.median(values, d => d.value),
+        d => d.sector
+      );
 
-      const sectorGroup = g.selectAll(".sector-box")
-        .data(stats)
+      const medianGroups = g.selectAll(".median-group")
+        .data(sectorMedians)
         .enter()
         .append("g")
-        .attr("class", "sector-box")
-        .attr("transform", d => `translate(${x(d.sector)},0)`)
+        .attr("class", "median-group")
         .style("cursor", "pointer")
         .on("mouseenter", (event, d) => {
-          d3.select(event.currentTarget).select("rect").attr("fill", colors.boxHover);
           showTooltip(event, `
-            <strong>${d.sector}</strong><br>
-            Median: ${formatRate(d.median)}<br>
-            Q1: ${formatRate(d.q1)}<br>
-            Q3: ${formatRate(d.q3)}<br>
-            Min (non-outlier): ${formatRate(d.min)}<br>
-            Max (non-outlier): ${formatRate(d.max)}
+            <strong>${d[0]}</strong><br>
+            Median ${state.metric === "count" ? "crime count" : "crime rate / 1,000"}: ${
+              state.metric === "count" ? formatInt(d[1]) : formatRate(d[1])
+            }<br>
+            Communities in sector: ${communityCountsBySector.get(d[0]) || 0}
           `);
         })
         .on("mousemove", (event, d) => {
           showTooltip(event, `
-            <strong>${d.sector}</strong><br>
-            Median: ${formatRate(d.median)}<br>
-            Q1: ${formatRate(d.q1)}<br>
-            Q3: ${formatRate(d.q3)}<br>
-            Min (non-outlier): ${formatRate(d.min)}<br>
-            Max (non-outlier): ${formatRate(d.max)}
+            <strong>${d[0]}</strong><br>
+            Median ${state.metric === "count" ? "crime count" : "crime rate / 1,000"}: ${
+              state.metric === "count" ? formatInt(d[1]) : formatRate(d[1])
+            }<br>
+            Communities in sector: ${communityCountsBySector.get(d[0]) || 0}
           `);
         })
-        .on("mouseleave", event => {
-          d3.select(event.currentTarget).select("rect").attr("fill", colors.box);
-          hideTooltip();
+        .on("mouseleave", hideTooltip);
+
+      medianGroups.append("line")
+        .attr("class", "median-line")
+        .attr("x1", d => x(d[0]) + x.bandwidth() * 0.15)
+        .attr("x2", d => x(d[0]) + x.bandwidth() * 0.85)
+        .attr("y1", d => y(d[1]))
+        .attr("y2", d => y(d[1]))
+        .attr("stroke", "#7bd389")
+        .attr("stroke-width", 2)
+        .attr("opacity", 0.9);
+
+      medianGroups.append("text")
+        .attr("class", "median-label")
+        .attr("x", d => x(d[0]) + x.bandwidth() * 0.85 + 6)
+        .attr("y", d => y(d[1]) - 4)
+        .attr("fill", "#7bd389")
+        .style("font-size", "10px")
+        .style("font-weight", "600")
+        .text("Median");
+
+      g.selectAll(".sector-dot")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class", "sector-dot")
+        .attr("cx", d => {
+          const bandStart = x(d.sector);
+          const bandWidth = x.bandwidth();
+          const jitter = (getJitter(d.jitterSeed + d.value) - 0.5) * bandWidth * 0.9;
+          return bandStart + bandWidth / 2 + jitter;
+        })
+        .attr("cy", d => y(d.value))
+        .attr("r", d => state.selectedCommunity === d.community ? 7.5 : 4.8)
+        .attr("fill", d => state.selectedCommunity === d.community ? colors.dotSelected : colorScale(d.value))
+        .attr("stroke", d => state.selectedCommunity === d.community ? "#ffffff" : "rgba(255,255,255,0.25)")
+        .attr("stroke-width", d => state.selectedCommunity === d.community ? 2 : 1)
+        .attr("opacity", d => state.selectedCommunity && state.selectedCommunity !== d.community ? 0.35 : 0.9)
+        .style("cursor", "pointer")
+        .on("mouseenter", (event, d) => {
+          showTooltip(event, `
+            <strong>${toTitleCase(d.community)}</strong><br>
+            Sector: ${d.sector}<br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+          `);
+        })
+        .on("mousemove", (event, d) => {
+          showTooltip(event, `
+            <strong>${toTitleCase(d.community)}</strong><br>
+            Sector: ${d.sector}<br>
+            Crime count: ${formatInt(d.count || 0)}<br>
+            Crime rate / 1,000: ${Number.isFinite(d.rate) ? formatRate(d.rate) : "N/A"}
+          `);
+        })
+        .on("mouseleave", hideTooltip)
+        .on("click", (_, d) => {
+          state.selectedCommunity = state.selectedCommunity === d.community ? null : d.community;
+          communityFilter.value = state.selectedCommunity ? toTitleCase(state.selectedCommunity) : "";
+          render();
         });
 
-      sectorGroup.append("line")
-        .attr("x1", boxWidth / 2)
-        .attr("x2", boxWidth / 2)
-        .attr("y1", innerHeight)
-        .attr("y2", innerHeight)
-        .attr("stroke", "#cbd5e1")
-        .attr("stroke-width", 1.4)
-        .transition()
-        .duration(600)
-        .attr("y1", d => y(d.min))
-        .attr("y2", d => y(d.max));
+      const highestPoint = data
+        .filter(d => Number.isFinite(d.value))
+        .sort((a, b) => d3.descending(a.value, b.value))[0];
 
-      sectorGroup.append("rect")
-        .attr("x", 0)
-        .attr("width", boxWidth)
-        .attr("y", d => y(d.median))
-        .attr("height", 0)
-        .attr("fill", colors.box)
-        .attr("stroke", "#8fb4ff")
-        .attr("rx", 6)
-        .transition()
-        .duration(650)
-        .ease(d3.easeCubicOut)
-        .attr("y", d => y(d.q3))
-        .attr("height", d => Math.max(1, y(d.q1) - y(d.q3)));
+      if (highestPoint) {
+        const bandStart = x(highestPoint.sector);
+        const bandWidth = x.bandwidth();
+        const jitter = (getJitter(highestPoint.jitterSeed + highestPoint.value) - 0.5) * bandWidth * 0.9;
+        const cx = bandStart + bandWidth / 2 + jitter;
+        const cy = y(highestPoint.value);
 
-      sectorGroup.append("line")
-        .attr("x1", 0)
-        .attr("x2", boxWidth)
-        .attr("y1", d => y(d.median))
-        .attr("y2", d => y(d.median))
-        .attr("stroke", colors.median)
-        .attr("stroke-width", 2.2);
+        const rawLabelX = cx + 26;
+        const rawLabelY = cy - 10;
+        const labelX = clamp(rawLabelX, 8, innerWidth - 82);
+        const labelY = clamp(rawLabelY, 14, innerHeight - 6);
 
-      sectorGroup.append("line")
-        .attr("x1", boxWidth * 0.2)
-        .attr("x2", boxWidth * 0.8)
-        .attr("y1", innerHeight)
-        .attr("y2", innerHeight)
-        .attr("stroke", "#cbd5e1")
-        .attr("stroke-width", 1.4)
-        .transition()
-        .duration(600)
-        .attr("y1", d => y(d.min))
-        .attr("y2", d => y(d.min));
-
-      sectorGroup.append("line")
-        .attr("x1", boxWidth * 0.2)
-        .attr("x2", boxWidth * 0.8)
-        .attr("y1", innerHeight)
-        .attr("y2", innerHeight)
-        .attr("stroke", "#cbd5e1")
-        .attr("stroke-width", 1.4)
-        .transition()
-        .duration(600)
-        .attr("y1", d => y(d.max))
-        .attr("y2", d => y(d.max));
-
-      if (topMedian) {
         g.append("line")
-          .attr("class", "insight-line")
-          .attr("x1", x(topMedian.sector) + boxWidth / 2)
-          .attr("x2", Math.min(innerWidth, x(topMedian.sector) + boxWidth / 2 + 58))
-          .attr("y1", y(topMedian.median))
-          .attr("y2", Math.max(16, y(topMedian.median) - 26));
+          .attr("x1", cx)
+          .attr("x2", labelX - 6)
+          .attr("y1", cy)
+          .attr("y2", labelY + 2)
+          .attr("stroke", "#ffd166")
+          .attr("stroke-width", 1.2)
+          .attr("stroke-dasharray", "4 3");
 
         g.append("text")
-          .attr("class", "insight-label")
-          .attr("x", Math.min(innerWidth - 8, x(topMedian.sector) + boxWidth / 2 + 62))
-          .attr("y", Math.max(12, y(topMedian.median) - 30))
-          .text("Highest median rate");
+          .attr("x", labelX)
+          .attr("y", labelY)
+          .attr("fill", "#ffd166")
+          .style("font-size", "11px")
+          .style("font-weight", "600")
+          .text("Highest value");
       }
     }
 
     function render() {
-      const filteredCrossSection = applyFilters(state.raw, { includeYearForCrossSection: true });
+      const filteredCrossSection = applyFilters(state.raw, { includeYear: true, includeCommunity: true });
       updateSummary(filteredCrossSection);
-      renderBarChart(filteredCrossSection);
+      updateActiveFilters();
+      updateTitles();
+      renderBarChart();
       renderTrendChart();
       renderSectorChart();
     }
@@ -972,24 +1071,29 @@
         render();
       });
 
-      yearSelect.addEventListener("change", e => {
-        state.year = e.target.value;
+      startYearSelect.addEventListener("change", e => {
+        state.startYear = e.target.value;
+        render();
+      });
+
+      endYearSelect.addEventListener("change", e => {
+        state.endYear = e.target.value;
         render();
       });
 
       communityFilter.addEventListener("input", e => {
         const value = e.target.value.trim().toLowerCase();
         if (value === "") {
-            state.selectedCommunity = null;
+          state.selectedCommunity = null;
         } else {
-            const exists = state.raw.some(
+          const exists = state.raw.some(
             d => d.community_name_join &&
-                d.community_name_join.toLowerCase() === value
-            );
-            state.selectedCommunity = exists ? value : null;
+              d.community_name_join.toLowerCase() === value
+          );
+          state.selectedCommunity = exists ? value : null;
         }
         render();
-        });
+      });
 
       countBtn.addEventListener("click", () => {
         state.metric = "count";
@@ -1008,13 +1112,15 @@
       resetBtn.addEventListener("click", () => {
         state.crimeType = "All";
         state.sector = "All";
-        state.year = "All";
+        state.startYear = "All";
+        state.endYear = "All";
         state.metric = "count";
         state.selectedCommunity = null;
 
         crimeTypeSelect.value = "All";
         sectorSelect.value = "All";
-        yearSelect.value = "All";
+        startYearSelect.value = "All";
+        endYearSelect.value = "All";
         communityFilter.value = "";
 
         countBtn.classList.add("active");
@@ -1033,7 +1139,7 @@
           crime_count: +d.crime_count,
           population_2019: d.population_2019 == null ? null : +d.population_2019,
           crime_rate_per_1000: d.crime_rate_per_1000 == null || d.crime_rate_per_1000 === "" ? null : +d.crime_rate_per_1000,
-          year: +d.year,
+          year: +d.year
         }));
 
         updateControlOptions();
@@ -1041,11 +1147,7 @@
         render();
       })
       .catch(error => {
-        console.error(error);
-        document.querySelector(".wrap").insertAdjacentHTML(
-          "beforeend",
-          `<p style="margin-top:16px;color:#ffb4b4;line-height:1.5;">Failed to load <code>part2_outputs/final_clean_with_rates.csv</code>. If you are opening this file directly in the browser, run a small local server first (for example: <code>python3 -m http.server</code>) and then open the local URL.</p>`
-        );
+        console.error("CSV load error:", error);
       });
   </script>
 </body>
