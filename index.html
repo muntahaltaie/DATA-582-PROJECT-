@@ -244,6 +244,7 @@
       stroke-width: 0;
     }
 
+<<<<<<< HEAD
     .empty-state {
       display: flex;
       align-items: center;
@@ -260,6 +261,8 @@
       padding: 24px;
     }
 =======
+=======
+>>>>>>> ab53443 (Replace index.html with clean final version)
   .empty-state {
     display: flex;
     align-items: center;
@@ -284,7 +287,6 @@
   color: var(--text);
   font-weight: 700;
 }
->>>>>>> c135a3a (Update final dashboard (Part 5 version))
 
     @media (max-width: 1200px) {
       .controls {
@@ -848,9 +850,12 @@
 
         container.append("div")
           .attr("class", "empty-state")
+<<<<<<< HEAD
           .html("Select a <strong>specific sector</strong> above to activate this view.<br><br>This chart shows individual community values within a single sector, along with that sector’s median.");
         return;
 =======
+=======
+>>>>>>> ab53443 (Replace index.html with clean final version)
           .html(`
     <div class="empty-state-content">
       <strong>Select a specific sector</strong><br>
@@ -859,7 +864,6 @@
       along with that sector’s median.
     </div>
   `);
->>>>>>> c135a3a (Update final dashboard (Part 5 version))
       }
 
       const filtered = applyFilters(state.raw, { includeYear: true, includeCommunity: false });
@@ -1168,7 +1172,7 @@
       window.addEventListener("resize", render);
     }
 
-    d3.csv("part2_outputs/final_clean_with_rates.csv", d3.autoType)
+    d3.csv("./part2_outputs/final_clean_with_rates.csv", d3.autoType)
       .then(data => {
         state.raw = data.map(d => ({
           ...d,
