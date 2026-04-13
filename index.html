@@ -244,6 +244,7 @@
       stroke-width: 0;
     }
 
+<<<<<<< HEAD
     .empty-state {
       display: flex;
       align-items: center;
@@ -259,6 +260,32 @@
       line-height: 1.5;
       padding: 24px;
     }
+=======
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--muted);
+    font-size: 0.95rem;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.015);
+    text-align: center;
+    padding: 24px;
+}
+
+.empty-state-content {
+  max-width: 520px;
+  line-height: 1.6;
+}
+
+.empty-state-content strong {
+  color: var(--text);
+  font-weight: 700;
+}
+>>>>>>> c135a3a (Update final dashboard (Part 5 version))
 
     @media (max-width: 1200px) {
       .controls {
@@ -822,8 +849,19 @@
 
         container.append("div")
           .attr("class", "empty-state")
+<<<<<<< HEAD
           .html("Select a <strong>specific sector</strong> above to activate this view.<br><br>This chart shows individual community values within a single sector, along with that sector’s median.");
         return;
+=======
+          .html(`
+    <div class="empty-state-content">
+      <strong>Select a specific sector</strong><br>
+      to activate this view.<br><br>
+      This chart shows individual community values within one sector,
+      along with that sector’s median.
+    </div>
+  `);
+>>>>>>> c135a3a (Update final dashboard (Part 5 version))
       }
 
       const filtered = applyFilters(state.raw, { includeYear: true, includeCommunity: false });
