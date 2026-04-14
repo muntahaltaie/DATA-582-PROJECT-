@@ -1,0 +1,26 @@
+Variable,F Statistic,p-value,Unit,Significant
+Oxygen dissolved % saturation,1460.9266,2.2866703095565985e-167,%,Yes
+Calcium Dissolved,244.1632,1.7348458919315334e-67,mg/L,Yes
+Nickel Dissolved,210.5188,4.887017329146548e-31,µg/L,Yes
+Calcium Total,115.8019,3.003772128265973e-25,mg/L,Yes
+Nickel Total Recoverable,86.137,8.876222116004668e-21,µg/L,Yes
+Nitrogen Kjeldahl Dissolved,64.5967,1.0849492421786153e-07,mg/L,Yes
+pH,52.4168,3.323116058057822e-20,Unitless,Yes
+Nitrogen Kjeldahl Total,30.9964,1.2208459094976059e-12,mg/L,Yes
+Vanadium Total Recoverable,29.088,2.3758159726949775e-10,µg/L,Yes
+Vanadium Dissolved,28.9489,5.53668792584929e-10,µg/L,Yes
+pH (Field),20.3634,2.2513163908782357e-09,Unitless,Yes
+Turbidity,16.7455,0.00015561680109922759,NTU,Yes
+Phosphorus Total,16.6101,1.3700017972227906e-07,mg/L,Yes
+Mercury Total,4.6625,0.01144232463568333,µg/L,Yes
+Phosphorus Total Dissolved,4.1809,0.017568831529444027,mg/L,Yes
+Methyl Mercury,3.3516,0.08072136721810146,µg/L,No
+Mercury Dissolved,2.7291,0.07633546624441251,µg/L,No
+Aluminum Dissolved,1.4837,0.23354798170841912,µg/L,No
+Lead Dissolved,0.9066,0.408379076754132,µg/L,No
+Aluminum Total Recoverable,0.4452,0.6422345610857342,µg/L,No
+OXYGEN BIOCHEMICAL DEMAND,0.3948,0.6770694849733198,mg/L,No
+Oxygen Dissolved (Field Meter),0.2916,0.7471540995032708,mg/L,No
+Copper Dissolved,0.2203,0.8027754789965568,µg/L,No
+Lead Total Recoverable,0.0847,0.9188397275225962,µg/L,No
+Copper Total Recoverable,0.063,0.9389467886041879,µg/L,No
